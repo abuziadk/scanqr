@@ -1,109 +1,161 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مسح QR - شاشة كاملة</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>مسح QR - نظام الحضور</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    font-family: "Tajawal", sans-serif;
-    background: #f3f6f4;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  #reader {
-    width: 100%;
-    height: 100%;
-  }
-  #scanMessage {
-    position: absolute;
-    bottom: 20px;
-    width: 100%;
-    text-align: center;
-    font-size: 24px;
-    color: #017c67;
-    font-weight: bold;
-    background: rgba(255,255,255,0.7);
-    padding: 10px 0;
-  }
+body{
+    font-family:"Tajawal",sans-serif;
+    background:linear-gradient(135deg,#f3f6f4,#e7f1ed);
+    min-height:100vh;
+}
+
+.moe-green{
+    color:#017c67;
+}
+
+.moe-card{
+    background:rgba(255,255,255,.9);
+    backdrop-filter:blur(10px);
+    border-radius:18px;
+    border:1px solid rgba(1,124,103,.15);
+    padding:25px;
+}
+
+.moe-btn{
+    background:linear-gradient(135deg,#017c67,#029a82);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:600;
+}
 </style>
 </head>
+
 <body>
 
-<div id="reader"></div>
-<div id="scanMessage">انتظر، جارٍ تشغيل الكاميرا...</div>
-<audio id="successSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" preload="auto"></audio>
+<div class="max-w-xl mx-auto p-6">
+<div class="moe-card shadow-lg">
+
+<div class="text-center mb-6">
+<h1 class="text-3xl font-extrabold moe-green">
+مسح QR لتسجيل الحضور
+</h1>
+<p class="text-gray-500 text-sm mt-2">
+مدرسة تحفيظ القرآن الكريم الابتدئية والمتوسطة بضمد
+</p>
+</div>
+
+<div id="reader" class="w-full border-2 border-green-700 rounded-xl"></div>
+
+<p id="scanMessage" class="text-center mt-4 font-bold text-sm"></p>
+
+</div>
+</div>
 
 <script>
-const API_URL = "PASTE_YOUR_DEPLOYED_WEBAPP_URL_HERE"; // ضع رابط الـ Web App
+
+/* ===============================
+   الإعدادات
+================================ */
+const API_URL = "https://script.google.com/macros/s/AKfycbzEBAyyKkeAuKg7Gf3HaTTfZ4YXyByNxjyRD-I4YC0rAWRTS7C6z0Vsy2htsjmmt1_7bQ/exec";
 
 let scanner = null;
 
-function startScanner() {
-  if(scanner) try { scanner.stop(); } catch(e){}
+/* ===============================
+   تشغيل الكاميرا
+================================ */
+function startScanner(){
 
-  scanner = new Html5Qrcode("reader");
-  const config = { fps: 10, qrbox: { width: window.innerWidth, height: window.innerHeight } };
+    scanner = new Html5Qrcode("reader");
 
-  scanner.start({ facingMode: "environment" }, config, onScan, console.error);
-}
+    const config = {
+        fps:10,
+        qrbox:{width:280,height:280}
+    };
 
-function onScan(decodedText, decodedResult) {
-  scanner.pause(); // إيقاف مؤقت لتجنب مسح متكرر
-  handleQR(decodedText);
-}
-
-function handleQR(text) {
-  let data;
-  try { data = JSON.parse(text); } catch(e){
-    document.getElementById("scanMessage").textContent = "QR غير صالح";
-    setTimeout(startScanner, 2000);
-    return;
-  }
-
-  if(!data.ID) {
-    document.getElementById("scanMessage").textContent = "QR ناقص";
-    setTimeout(startScanner, 2000);
-    return;
-  }
-
-  const form = new URLSearchParams();
-  form.append("action", "attendance");
-  form.append("ID", data.ID || "");
-  form.append("name", data.NAME || "");
-  form.append("grade", data.GRADE || "");
-  form.append("class", data.CLASS || "");
-  form.append("parentMobile", data.parentMobile || "");
-
-  fetch(API_URL, { method: "POST", body: form })
-    .then(res => res.text())
-    .then(msg => {
-      document.getElementById("scanMessage").textContent = msg;
-      document.getElementById("successSound").play();
-      setTimeout(startScanner, 1500); // إعادة تشغيل الكاميرا
-    })
-    .catch(err => {
-      document.getElementById("scanMessage").textContent = "خطأ في الاتصال";
-      console.error(err);
-      setTimeout(startScanner, 2000);
+    scanner.start(
+        {facingMode:{exact:"environment"}},
+        config,
+        onScanSuccess,
+        ()=>{}
+    ).catch(()=>{
+        Html5Qrcode.getCameras().then(cams=>{
+            if(!cams.length){
+                alert("لا توجد كاميرات متاحة");
+                return;
+            }
+            scanner.start(cams[0].id,config,onScanSuccess,()=>{});
+        });
     });
 }
 
-// طلب Fullscreen تلقائي عند التحميل
-document.addEventListener("DOMContentLoaded", () => {
-  startScanner();
-  if(document.documentElement.requestFullscreen) {
-    document.documentElement.requestFullscreen().catch(()=>{});
-  }
-});
+/* ===============================
+   عند قراءة QR
+================================ */
+function onScanSuccess(decodedText){
+
+    try{
+        scanner.stop();
+    }catch(e){}
+
+    let data;
+
+    try{
+        data = JSON.parse(decodedText);
+    }catch{
+        document.getElementById("scanMessage").textContent="QR غير صالح";
+        setTimeout(startScanner,1200);
+        return;
+    }
+
+    if(!data.ID || !data.TOKEN){
+        document.getElementById("scanMessage").textContent="QR ناقص";
+        setTimeout(startScanner,1200);
+        return;
+    }
+
+    recordAttendance(data);
+
+    setTimeout(startScanner,1500);
+}
+
+/* ===============================
+   تسجيل الحضور
+================================ */
+function recordAttendance(stu){
+
+    const form = new URLSearchParams();
+    form.append("action","attendance");
+    form.append("ID",stu.ID);
+    form.append("name",stu.NAME || "");
+    form.append("grade",stu.GRADE || "");
+    form.append("class",stu.CLASS || "");
+    form.append("parentMobile",stu.parentMobile || "");
+    form.append("token",stu.TOKEN);
+
+    fetch(API_URL,{
+        method:"POST",
+        body:form
+    })
+    .then(r=>r.text())
+    .then(msg=>{
+        document.getElementById("scanMessage").textContent=msg;
+    })
+    .catch(()=>{
+        document.getElementById("scanMessage").textContent="حدث خطأ في الاتصال";
+    });
+}
+
+/* =============================== */
+startScanner();
+/* =============================== */
+
 </script>
 
 </body>
