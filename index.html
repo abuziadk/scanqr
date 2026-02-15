@@ -58,17 +58,12 @@ body{
 </div>
 </div>
 
-<!-- صوت تنبيه قصير -->
-<audio id="successSound" preload="auto">
-<source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg" type="audio/ogg">
-</audio>
-
 <script>
 
 /* ===============================
    الإعدادات
 ================================ */
-const API_URL = "ضع_رابط_السكريبت_هنا";
+const API_URL = "https://script.google.com/macros/s/AKfycbzEBAyyKkeAuKg7Gf3HaTTfZ4YXyByNxjyRD-I4YC0rAWRTS7C6z0Vsy2htsjmmt1_7bQ/exec";
 
 let scanner = null;
 
@@ -105,20 +100,22 @@ function startScanner(){
 ================================ */
 function onScanSuccess(decodedText){
 
-    try{ scanner.stop(); }catch(e){}
+    try{
+        scanner.stop();
+    }catch(e){}
 
     let data;
 
     try{
         data = JSON.parse(decodedText);
     }catch{
-        showMessage("QR غير صالح",false);
+        document.getElementById("scanMessage").textContent="QR غير صالح";
         setTimeout(startScanner,1200);
         return;
     }
 
     if(!data.ID || !data.TOKEN){
-        showMessage("QR ناقص",false);
+        document.getElementById("scanMessage").textContent="QR ناقص";
         setTimeout(startScanner,1200);
         return;
     }
@@ -148,36 +145,11 @@ function recordAttendance(stu){
     })
     .then(r=>r.text())
     .then(msg=>{
-        showMessage(msg,true);
-        playSuccessSound();
+        document.getElementById("scanMessage").textContent=msg;
     })
     .catch(()=>{
-        showMessage("حدث خطأ في الاتصال",false);
+        document.getElementById("scanMessage").textContent="حدث خطأ في الاتصال";
     });
-}
-
-/* ===============================
-   عرض الرسالة
-================================ */
-function showMessage(text,success){
-
-    const el = document.getElementById("scanMessage");
-    el.textContent = text;
-
-    if(success){
-        el.style.color = "green";
-    }else{
-        el.style.color = "red";
-    }
-}
-
-/* ===============================
-   تشغيل صوت النجاح
-================================ */
-function playSuccessSound(){
-    const audio = document.getElementById("successSound");
-    audio.currentTime = 0;
-    audio.play().catch(()=>{});
 }
 
 /* =============================== */
