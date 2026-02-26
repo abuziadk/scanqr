@@ -67,6 +67,20 @@ body{
     margin-top: 8px;
     color: #444;
 }
+
+/* Toast */
+#toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #017c67;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 16px;
+    display: none;
+    z-index: 99999;
+}
 </style>
 </head>
 
@@ -74,6 +88,9 @@ body{
 
 <!-- صوت النجاح -->
 <audio id="successSound" src="success.mp3"></audio>
+
+<!-- Toast -->
+<div id="toast"></div>
 
 <!-- البطاقة المنبثقة -->
 <div id="popupBox">
@@ -107,35 +124,40 @@ body{
 
 <script>
 
-/* ===============================
-   الإعدادات
-================================ */
 const API_URL = "https://script.google.com/macros/s/AKfycbzEBAyyKkeAuKg7Gf3HaTTfZ4YXyByNxjyRD-I4YC0rAWRTS7C6z0Vsy2htsjmmt1_7bQ/exec";
 
 let scanner = null;
 let soundEnabled = false;
 
-/* ===============================
-   تفعيل الصوت بدون تجميد الكاميرا
-================================ */
+/* Toast */
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.style.display = "block";
+
+    setTimeout(() => {
+        t.style.display = "none";
+    }, 2000);
+}
+
+/* تفعيل الصوت بدون تجميد الكاميرا */
 function enableSound() {
     const audio = document.getElementById("successSound");
 
-    audio.muted = true; // تشغيل صامت
+    audio.muted = true;
     audio.play().then(() => {
         audio.pause();
         audio.currentTime = 0;
-        audio.muted = false; // إعادة الصوت الطبيعي
+        audio.muted = false;
+
         soundEnabled = true;
-        alert("تم تفعيل الصوت بنجاح ✔");
+        showToast("تم تفعيل الصوت بنجاح ✔");
     }).catch(() => {
-        alert("اضغط مرة أخرى لتفعيل الصوت");
+        showToast("اضغط مرة أخرى لتفعيل الصوت");
     });
 }
 
-/* ===============================
-   تشغيل الكاميرا
-================================ */
+/* تشغيل الكاميرا */
 function startScanner(){
 
     scanner = new Html5Qrcode("reader");
@@ -153,7 +175,7 @@ function startScanner(){
     ).catch(()=>{
         Html5Qrcode.getCameras().then(cams=>{
             if(!cams.length){
-                alert("لا توجد كاميرات متاحة");
+                showToast("لا توجد كاميرات متاحة");
                 return;
             }
             scanner.start(cams[0].id,config,onScanSuccess,()=>{});
@@ -161,9 +183,7 @@ function startScanner(){
     });
 }
 
-/* ===============================
-   البطاقة المنبثقة
-================================ */
+/* البطاقة المنبثقة */
 function showPopup(name, status){
     document.getElementById("popupName").textContent = name;
     document.getElementById("popupStatus").textContent = status;
@@ -176,9 +196,7 @@ function showPopup(name, status){
     }, 2000);
 }
 
-/* ===============================
-   عند قراءة QR
-================================ */
+/* عند قراءة QR */
 function onScanSuccess(decodedText){
 
     try{
@@ -206,9 +224,7 @@ function onScanSuccess(decodedText){
     setTimeout(startScanner,1500);
 }
 
-/* ===============================
-   تسجيل الحضور
-================================ */
+/* تسجيل الحضور */
 function recordAttendance(stu){
 
     const form = new URLSearchParams();
@@ -244,9 +260,7 @@ function recordAttendance(stu){
     });
 }
 
-/* =============================== */
 startScanner();
-/* =============================== */
 
 </script>
 
