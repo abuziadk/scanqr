@@ -203,6 +203,12 @@ function onScanSuccess(decodedText){
         scanner.stop();
     }catch(e){}
 
+    // تشغيل الصوت مباشرة عند المسح
+    if(soundEnabled){
+        const audio = document.getElementById("successSound");
+        audio.play().catch(()=>{});
+    }
+
     let data;
 
     try{
@@ -219,6 +225,7 @@ function onScanSuccess(decodedText){
         return;
     }
 
+    // إرسال البيانات للسيرفر
     recordAttendance(data);
 
     setTimeout(startScanner,1500);
@@ -245,11 +252,7 @@ function recordAttendance(stu){
     .then(r=>r.text())
     .then(msg=>{
 
-        if(soundEnabled){
-            const audio = document.getElementById("successSound");
-            audio.play().catch(()=>{});
-        }
-
+        // لا صوت هنا
         showPopup(firstName, msg);
 
         document.getElementById("scanMessage").textContent = msg;
@@ -260,7 +263,6 @@ function recordAttendance(stu){
     });
 }
 
-startScanner();
 
 </script>
 
