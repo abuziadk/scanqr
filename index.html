@@ -121,15 +121,20 @@ let soundEnabled = false;
 function enableSound() {
     const audio = document.getElementById("successSound");
 
-    audio.volume = 0;
+    // تشغيل صامت بدون إيقاف الكاميرا
+    audio.muted = true;
     audio.play().then(() => {
         audio.pause();
         audio.currentTime = 0;
-        audio.volume = 1;
+        audio.muted = false;
+
         soundEnabled = true;
         alert("تم تفعيل الصوت بنجاح ✔");
+    }).catch(() => {
+        alert("اضغط مرة أخرى لتفعيل الصوت");
     });
 }
+
 
 /* ===============================
    تشغيل الكاميرا
@@ -250,3 +255,4 @@ startScanner();
 
 </body>
 </html>
+
