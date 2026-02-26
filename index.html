@@ -34,52 +34,10 @@ body{
     border-radius:10px;
     font-weight:600;
 }
-
-/* البطاقة المنبثقة */
-#popupBox {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.7);
-    background: white;
-    padding: 25px 35px;
-    border-radius: 18px;
-    text-align: center;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-    opacity: 0;
-    transition: 0.25s ease;
-    z-index: 9999;
-}
-
-#popupBox.show {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-}
-
-#popupName {
-    font-size: 28px;
-    font-weight: bold;
-    color: #017c67;
-}
-
-#popupStatus {
-    font-size: 20px;
-    margin-top: 8px;
-    color: #444;
-}
 </style>
 </head>
 
 <body>
-
-<!-- صوت النجاح -->
-<audio id="successSound" src="success.mp3"></audio>
-
-<!-- البطاقة المنبثقة -->
-<div id="popupBox">
-    <div id="popupName"></div>
-    <div id="popupStatus"></div>
-</div>
 
 <div class="max-w-xl mx-auto p-6">
 <div class="moe-card shadow-lg">
@@ -138,21 +96,6 @@ function startScanner(){
 }
 
 /* ===============================
-   البطاقة المنبثقة
-================================ */
-function showPopup(name, status){
-    document.getElementById("popupName").textContent = name;
-    document.getElementById("popupStatus").textContent = status;
-
-    const box = document.getElementById("popupBox");
-    box.classList.add("show");
-
-    setTimeout(()=>{
-        box.classList.remove("show");
-    }, 2000);
-}
-
-/* ===============================
    عند قراءة QR
 ================================ */
 function onScanSuccess(decodedText){
@@ -202,35 +145,7 @@ function recordAttendance(stu){
     })
     .then(r=>r.text())
     .then(msg=>{
-
-        const parts = msg.split("|");
-        const type = parts[0];
-        const firstName = parts[1] || "";
-        const status = parts[2] || "";
-
-        if(type === "SUCCESS"){
-            document.getElementById("successSound").play();
-            showPopup(firstName, status);
-            document.getElementById("scanMessage").textContent =
-                "تم تسجيل حضور: " + firstName;
-        }
-
-        else if(type === "DUPLICATE"){
-            showPopup(firstName, "تم تسجيله مسبقًا");
-            document.getElementById("scanMessage").textContent =
-                "تم تسجيل الطالب مسبقًا: " + firstName;
-        }
-
-        else if(type === "LATE_TIME"){
-            showPopup(firstName, "انتهى وقت التسجيل");
-            document.getElementById("scanMessage").textContent =
-                "انتهى وقت التسجيل للطالب: " + firstName;
-        }
-
-        else {
-            document.getElementById("scanMessage").textContent = msg;
-        }
-
+        document.getElementById("scanMessage").textContent=msg;
     })
     .catch(()=>{
         document.getElementById("scanMessage").textContent="حدث خطأ في الاتصال";
