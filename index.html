@@ -182,6 +182,24 @@ function onScanSuccess(decodedText){
     setTimeout(startScanner,1500);
 }
 
+function enableSound() {
+    const audio = document.getElementById("successSound");
+
+    // تشغيل صامت بدون إيقاف الكاميرا
+    audio.muted = true;
+    audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.muted = false;
+
+        soundEnabled = true;
+        alert("تم تفعيل الصوت بنجاح ✔");
+    }).catch(() => {
+        alert("اضغط مرة أخرى لتفعيل الصوت");
+    });
+}
+
+    
 /* ===============================
    تسجيل الحضور
 ================================ */
@@ -232,3 +250,4 @@ startScanner();
 
 </body>
 </html>
+
