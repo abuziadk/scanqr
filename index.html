@@ -93,6 +93,11 @@ body{
 </p>
 </div>
 
+<!-- زر تفعيل الصوت -->
+<button onclick="enableSound()" class="moe-btn w-full mb-4">
+تفعيل الصوت
+</button>
+
 <div id="reader" class="w-full border-2 border-green-700 rounded-xl"></div>
 
 <p id="scanMessage" class="text-center mt-4 font-bold text-sm"></p>
@@ -108,6 +113,23 @@ body{
 const API_URL = "https://script.google.com/macros/s/AKfycbzEBAyyKkeAuKg7Gf3HaTTfZ4YXyByNxjyRD-I4YC0rAWRTS7C6z0Vsy2htsjmmt1_7bQ/exec";
 
 let scanner = null;
+let soundEnabled = false;
+
+/* ===============================
+   تفعيل الصوت للجوال
+================================ */
+function enableSound() {
+    const audio = document.getElementById("successSound");
+
+    audio.volume = 0;
+    audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = 1;
+        soundEnabled = true;
+        alert("تم تفعيل الصوت بنجاح ✔");
+    });
+}
 
 /* ===============================
    تشغيل الكاميرا
@@ -182,24 +204,6 @@ function onScanSuccess(decodedText){
     setTimeout(startScanner,1500);
 }
 
-function enableSound() {
-    const audio = document.getElementById("successSound");
-
-    // تشغيل صامت بدون إيقاف الكاميرا
-    audio.muted = true;
-    audio.play().then(() => {
-        audio.pause();
-        audio.currentTime = 0;
-        audio.muted = false;
-
-        soundEnabled = true;
-        alert("تم تفعيل الصوت بنجاح ✔");
-    }).catch(() => {
-        alert("اضغط مرة أخرى لتفعيل الصوت");
-    });
-}
-
-    
 /* ===============================
    تسجيل الحضور
 ================================ */
@@ -223,16 +227,13 @@ function recordAttendance(stu){
     .then(r=>r.text())
     .then(msg=>{
 
-        // نحاول تشغيل الصوت (مع معالجة منع المتصفح)
-        const audio = document.getElementById("successSound");
-        if (audio) {
-            audio.play().catch(()=>{ /* بعض المتصفحات تمنع التشغيل التلقائي */ });
+        if(soundEnabled){
+            const audio = document.getElementById("successSound");
+            audio.play().catch(()=>{});
         }
 
-        // نعرض الاسم الأول في البطاقة
         showPopup(firstName, msg);
 
-        // نعرض الرسالة النصية تحت الكاميرا
         document.getElementById("scanMessage").textContent = msg;
 
     })
@@ -240,7 +241,6 @@ function recordAttendance(stu){
         document.getElementById("scanMessage").textContent="حدث خطأ في الاتصال";
     });
 }
-
 
 /* =============================== */
 startScanner();
@@ -250,4 +250,3 @@ startScanner();
 
 </body>
 </html>
-
