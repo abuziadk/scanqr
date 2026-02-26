@@ -196,6 +196,8 @@ function recordAttendance(stu){
     form.append("parentMobile",stu.parentMobile || "");
     form.append("token",stu.TOKEN);
 
+    const firstName = (stu.NAME || "").split(" ")[0] || "";
+
     fetch(API_URL,{
         method:"POST",
         body:form
@@ -203,39 +205,24 @@ function recordAttendance(stu){
     .then(r=>r.text())
     .then(msg=>{
 
-        const parts = msg.split("|");
-        const type = parts[0];
-        const firstName = parts[1] || "";
-        const status = parts[2] || "";
-
-        if(type === "SUCCESS"){
-            document.getElementById("successSound").play();
-            showPopup(firstName, status);
-            document.getElementById("scanMessage").textContent =
-                "تم تسجيل حضور: " + firstName;
+        // نحاول تشغيل الصوت (مع معالجة منع المتصفح)
+        const audio = document.getElementById("successSound");
+        if (audio) {
+            audio.play().catch(()=>{ /* بعض المتصفحات تمنع التشغيل التلقائي */ });
         }
 
-        else if(type === "DUPLICATE"){
-            showPopup(firstName, "تم تسجيله مسبقًا");
-            document.getElementById("scanMessage").textContent =
-                "تم تسجيل الطالب مسبقًا: " + firstName;
-        }
+        // نعرض الاسم الأول في البطاقة
+        showPopup(firstName, msg);
 
-        else if(type === "LATE_TIME"){
-            showPopup(firstName, "انتهى وقت التسجيل");
-            document.getElementById("scanMessage").textContent =
-                "انتهى وقت التسجيل للطالب: " + firstName;
-        }
-
-        else {
-            document.getElementById("scanMessage").textContent = msg;
-        }
+        // نعرض الرسالة النصية تحت الكاميرا
+        document.getElementById("scanMessage").textContent = msg;
 
     })
     .catch(()=>{
         document.getElementById("scanMessage").textContent="حدث خطأ في الاتصال";
     });
 }
+
 
 /* =============================== */
 startScanner();
