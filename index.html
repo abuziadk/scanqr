@@ -256,7 +256,7 @@ function recordAttendance(stu){
         // تحديث النافذة بعد وصول الرد
         showPopup(firstName, msg);
 
-        document.getElementById("scanMessage").textContent = msg;
+        document.getElementById("scanMessage").textContent = "";
 
     })
     .catch(()=>{
@@ -271,6 +271,7 @@ startScanner();
 
 </body>
 </html>
+
 
 
 
