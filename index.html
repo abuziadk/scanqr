@@ -199,15 +199,16 @@ function showPopup(name, status){
 /* عند قراءة QR */
 function onScanSuccess(decodedText){
 
-    try{
-        scanner.stop();
-    }catch(e){}
+    try { scanner.stop(); } catch(e){}
 
-    // تشغيل الصوت مباشرة عند المسح
+    // تشغيل الصوت فورًا
     if(soundEnabled){
         const audio = document.getElementById("successSound");
         audio.play().catch(()=>{});
     }
+
+    // نافذة فورية قبل الاتصال بالسيرفر
+    showPopup("جاري التحقق...", "يتم الآن تسجيل الحضور");
 
     let data;
 
@@ -252,13 +253,14 @@ function recordAttendance(stu){
     .then(r=>r.text())
     .then(msg=>{
 
-        // لا صوت هنا
+        // تحديث النافذة بعد وصول الرد
         showPopup(firstName, msg);
 
         document.getElementById("scanMessage").textContent = msg;
 
     })
     .catch(()=>{
+        showPopup("خطأ", "تعذر الاتصال بالخادم");
         document.getElementById("scanMessage").textContent="حدث خطأ في الاتصال";
     });
 }
@@ -269,4 +271,5 @@ startScanner();
 
 </body>
 </html>
+
 
