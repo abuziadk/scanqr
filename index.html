@@ -117,8 +117,6 @@ body{
 
 <div id="reader" class="w-full border-2 border-green-700 rounded-xl"></div>
 
-<p id="scanMessage" class="text-center mt-4 font-bold text-sm"></p>
-
 </div>
 </div>
 
@@ -201,7 +199,7 @@ function onScanSuccess(decodedText){
 
     try { scanner.stop(); } catch(e){}
 
-    // تشغيل الصوت فورًا
+    // تشغيل الصوت فورًا عند المسح
     if(soundEnabled){
         const audio = document.getElementById("successSound");
         audio.play().catch(()=>{});
@@ -215,18 +213,15 @@ function onScanSuccess(decodedText){
     try{
         data = JSON.parse(decodedText);
     }catch{
-        document.getElementById("scanMessage").textContent="QR غير صالح";
         setTimeout(startScanner,1200);
         return;
     }
 
     if(!data.ID || !data.TOKEN){
-        document.getElementById("scanMessage").textContent="QR ناقص";
         setTimeout(startScanner,1200);
         return;
     }
 
-    // إرسال البيانات للسيرفر
     recordAttendance(data);
 
     setTimeout(startScanner,1500);
@@ -252,16 +247,10 @@ function recordAttendance(stu){
     })
     .then(r=>r.text())
     .then(msg=>{
-
-        // تحديث النافذة بعد وصول الرد
         showPopup(firstName, msg);
-
-        document.getElementById("scanMessage").textContent = "";
-
     })
     .catch(()=>{
         showPopup("خطأ", "تعذر الاتصال بالخادم");
-        document.getElementById("scanMessage").textContent="حدث خطأ في الاتصال";
     });
 }
 
@@ -271,8 +260,3 @@ startScanner();
 
 </body>
 </html>
-
-
-
-
-
