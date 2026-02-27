@@ -199,27 +199,44 @@ function showPopup(name, status){
 }
 
 /* عند قراءة QR */
+let scannerBusy = false;
+
 function onScanSuccess(decodedText){
 
-    try { scanner.stop(); } catch(e){}
+    if (scannerBusy) return; 
+    scannerBusy = true;
 
-    if(soundEnabled){
-        const audio = document.getElementById("successSound");
-        audio.play().catch(()=>{});
-    }
+    // إيقاف الماسح بشكل صحيح
+    scanner.stop().then(() => {
 
-    showPopup("جاري التحقق...", "يتم الآن تسجيل الحضور");
+        if(soundEnabled){
+            const audio = document.getElementById("successSound");
+            audio.play().catch(()=>{});
+        }
 
-    let data;
-    try{ data = JSON.parse(decodedText); }
-    catch{ return startScanner(); }
+        showPopup("جاري التحقق...", "يتم الآن تسجيل الحضور");
 
-    if(!data.ID || !data.TOKEN){
-        return startScanner();
-    }
+        let data;
+        try { data = JSON.parse(decodedText); }
+        catch {
+            scannerBusy = false;
+            return setTimeout(() => startScanner(), 500);
+        }
 
-    recordAttendance(data);
+        if(!data.ID || !data.TOKEN){
+            scannerBusy = false;
+            return setTimeout(() => startScanner(), 500);
+        }
+
+        recordAttendance(data);
+
+    }).catch(() => {
+        // لو فشل الإيقاف، نعيد التشغيل مباشرة
+        scannerBusy = false;
+        startScanner();
+    });
 }
+
 
 /* تسجيل الحضور في Firebase */
 function recordAttendance(stu){
@@ -282,3 +299,4 @@ startScanner();
 
 </body>
 </html>
+
