@@ -239,6 +239,9 @@ function recordAttendance(stu){
         if (snapshot.exists()) {
             const status = snapshot.val().status;
             showPopup(firstName, "مسجل مسبقًا - " + status);
+
+            // إعادة تشغيل الماسح بعد ظهور الرسالة
+            setTimeout(() => { startScanner(); }, 1500);
             return;
         }
 
@@ -253,9 +256,22 @@ function recordAttendance(stu){
             time: time,
             date: today,
             status: status
+        }).then(() => {
+
+            showPopup(firstName, "تم تسجيل الحضور");
+
+            // إعادة تشغيل الماسح بعد التسجيل
+            setTimeout(() => { startScanner(); }, 1500);
+
+        }).catch(() => {
+
+            showPopup("خطأ", "تعذر تسجيل الحضور");
+
+            // إعادة تشغيل الماسح حتى لو حدث خطأ
+            setTimeout(() => { startScanner(); }, 1500);
+
         });
 
-        showPopup(firstName, "تم تسجيل الحضور");
     });
 }
 
@@ -273,3 +289,4 @@ startScanner();
 
 </body>
 </html>
+
