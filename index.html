@@ -244,7 +244,6 @@ function recordAttendance(stu){
     const now = new Date();
     const today = now.toISOString().split("T")[0];
     const time = now.toLocaleTimeString("ar-SA");
-
     const firstName = (stu.NAME || "").split(" ")[0];
 
     const ref = db.ref("attendance/" + today + "/" + stu.ID);
@@ -255,7 +254,11 @@ function recordAttendance(stu){
             const status = snapshot.val().status;
             showPopup(firstName, "مسجل مسبقًا - " + status);
 
-            setTimeout(() => { startScanner(); }, 1500);
+            setTimeout(() => {
+                scannerBusy = false;
+                startScanner();
+            }, 1200);
+
             return;
         }
 
@@ -273,17 +276,26 @@ function recordAttendance(stu){
         }).then(() => {
 
             showPopup(firstName, "تم تسجيل الحضور");
-            setTimeout(() => { startScanner(); }, 1500);
+
+            setTimeout(() => {
+                scannerBusy = false;
+                startScanner();
+            }, 1200);
 
         }).catch(() => {
 
             showPopup("خطأ", "تعذر تسجيل الحضور");
-            setTimeout(() => { startScanner(); }, 1500);
+
+            setTimeout(() => {
+                scannerBusy = false;
+                startScanner();
+            }, 1200);
 
         });
 
     });
 }
+
 
 /* تحديث الشيت عند الطلب */
 function syncToSheet() {
@@ -299,4 +311,5 @@ startScanner();
 
 </body>
 </html>
+
 
