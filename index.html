@@ -208,11 +208,12 @@ function onScanSuccess(decodedText){
     scanner.stop().then(() => {
 
         if(soundEnabled){
-            const audio = document.getElementById("successSound");
-            audio.play().catch(()=>{});
-        }
+    const audio = document.getElementById("successSound");
+    audio.play().catch(()=>{});
+}
 
-        showPopup("جاري التحقق...", "يتم الآن تسجيل الحضور");
+// تم حذف نافذة "جاري التحقق..."
+
 
         let data;
         try { data = JSON.parse(decodedText); }
@@ -306,5 +307,6 @@ startScanner();
 
 </body>
 </html>
+
 
 
