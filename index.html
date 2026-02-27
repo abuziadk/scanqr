@@ -8,9 +8,9 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+<!-- Firebase COMPAT VERSION (المطلوبة للمتصفح) -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
 <script>
   const firebaseConfig = {
@@ -24,7 +24,7 @@
     measurementId: "G-Z6YXDGFHRY"
   };
 
-  const app = firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 </script>
 
@@ -147,6 +147,7 @@ body{
 
 let scanner = null;
 let soundEnabled = false;
+let scannerBusy = false;
 
 /* Toast */
 function showToast(msg) {
@@ -199,14 +200,11 @@ function showPopup(name, status){
 }
 
 /* عند قراءة QR */
-let scannerBusy = false;
-
 function onScanSuccess(decodedText){
 
-    if (scannerBusy) return; 
+    if (scannerBusy) return;
     scannerBusy = true;
 
-    // إيقاف الماسح بشكل صحيح
     scanner.stop().then(() => {
 
         if(soundEnabled){
@@ -231,12 +229,10 @@ function onScanSuccess(decodedText){
         recordAttendance(data);
 
     }).catch(() => {
-        // لو فشل الإيقاف، نعيد التشغيل مباشرة
         scannerBusy = false;
         startScanner();
     });
 }
-
 
 /* تسجيل الحضور في Firebase */
 function recordAttendance(stu){
@@ -296,7 +292,6 @@ function recordAttendance(stu){
     });
 }
 
-
 /* تحديث الشيت عند الطلب */
 function syncToSheet() {
     fetch("YOUR_SCRIPT_URL?action=sync")
@@ -311,5 +306,3 @@ startScanner();
 
 </body>
 </html>
-
-
