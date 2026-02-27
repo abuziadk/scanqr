@@ -212,11 +212,10 @@ function onScanSuccess(decodedText){
 
     let data;
     try{ data = JSON.parse(decodedText); }
-    catch{ setTimeout(startScanner,1200); return; }
+    catch{ return startScanner(); }
 
     if(!data.ID || !data.TOKEN){
-        setTimeout(startScanner,1200);
-        return;
+        return startScanner();
     }
 
     recordAttendance(data);
@@ -239,7 +238,6 @@ function recordAttendance(stu){
             const status = snapshot.val().status;
             showPopup(firstName, "مسجل مسبقًا - " + status);
 
-            // إعادة تشغيل الماسح بعد ظهور الرسالة
             setTimeout(() => { startScanner(); }, 1500);
             return;
         }
@@ -258,15 +256,11 @@ function recordAttendance(stu){
         }).then(() => {
 
             showPopup(firstName, "تم تسجيل الحضور");
-
-            // إعادة تشغيل الماسح بعد التسجيل
             setTimeout(() => { startScanner(); }, 1500);
 
         }).catch(() => {
 
             showPopup("خطأ", "تعذر تسجيل الحضور");
-
-            // إعادة تشغيل الماسح حتى لو حدث خطأ
             setTimeout(() => { startScanner(); }, 1500);
 
         });
@@ -288,5 +282,3 @@ startScanner();
 
 </body>
 </html>
-
-
