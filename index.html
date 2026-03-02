@@ -240,20 +240,8 @@ function recordAttendance(stu){
 
     const now = new Date();
     const today = now.toISOString().split("T")[0];
-
-    // وقت مختصر لحساب الحالة
-    const timeShort = now.toTimeString().slice(0,5);
-
-    // وقت كامل للعرض
-    const timeFull = now.toLocaleTimeString("ar-SA");
-
-    // دعم الحالتين NAME و name
-    const name = stu.NAME || stu.name || "";
-    const grade = stu.GRADE || stu.grade || "";
-    const className = stu.CLASS || stu.class || "";
-    const parentMobile = stu.parentMobile || stu.ParentMobile || "";
-
-    const firstName = name.split(" ")[0];
+    const time = now.toLocaleTimeString("ar-SA");
+    const firstName = (stu.NAME || "").split(" ")[0];
 
     const ref = db.ref("attendance/" + today + "/" + stu.ID);
 
@@ -271,21 +259,20 @@ function recordAttendance(stu){
             return;
         }
 
-        // حساب الحالة
-        const status = getAttendanceStatus(timeShort);
+        const status = "حاضر";
 
         ref.set({
             id: stu.ID,
-            name: name,
-            grade: grade,
-            class: className,
-            parentMobile: parentMobile,
-            time: timeFull,
+            name: stu.NAME,
+            grade: stu.GRADE,
+            class: stu.CLASS,
+            parentMobile: stu.parentMobile,
+            time: time,
             date: today,
             status: status
         }).then(() => {
 
-            showPopup(firstName, "تم تسجيل: " + status);
+            showPopup(firstName, "تم تسجيل الحضور");
 
             setTimeout(() => {
                 scannerBusy = false;
@@ -305,8 +292,6 @@ function recordAttendance(stu){
 
     });
 }
-
-
 
 /* تحديث الشيت عند الطلب */
 function syncToSheet() {
