@@ -241,10 +241,19 @@ function recordAttendance(stu){
     const now = new Date();
     const today = now.toISOString().split("T")[0];
 
-    // وقت بصيغة HH:MM فقط
-    const time = now.toTimeString().slice(0,5);
+    // وقت مختصر لحساب الحالة
+    const timeShort = now.toTimeString().slice(0,5);
 
-    const firstName = (stu.NAME || "").split(" ")[0];
+    // وقت كامل للعرض
+    const timeFull = now.toLocaleTimeString("ar-SA");
+
+    // دعم الحالتين NAME و name
+    const name = stu.NAME || stu.name || "";
+    const grade = stu.GRADE || stu.grade || "";
+    const className = stu.CLASS || stu.class || "";
+    const parentMobile = stu.parentMobile || stu.ParentMobile || "";
+
+    const firstName = name.split(" ")[0];
 
     const ref = db.ref("attendance/" + today + "/" + stu.ID);
 
@@ -262,16 +271,16 @@ function recordAttendance(stu){
             return;
         }
 
-        // حساب الحالة الصحيحة
-        const status = getAttendanceStatus(time);
+        // حساب الحالة
+        const status = getAttendanceStatus(timeShort);
 
         ref.set({
             id: stu.ID,
-            name: stu.NAME,
-            grade: stu.GRADE,
-            class: stu.CLASS,
-            parentMobile: stu.parentMobile,
-            time: time,
+            name: name,
+            grade: grade,
+            class: className,
+            parentMobile: parentMobile,
+            time: timeFull,
             date: today,
             status: status
         }).then(() => {
@@ -298,6 +307,7 @@ function recordAttendance(stu){
 }
 
 
+
 /* تحديث الشيت عند الطلب */
 function syncToSheet() {
     fetch("https://script.google.com/macros/s/AKfycbzif8zmJWSVYHeUx-IqA_THoPRZieuYWEJNi-3prV0GQXfkUoY_oCoBZkEacVrcC-u-/exec?action=sync")
@@ -313,6 +323,5 @@ startScanner();
 
 </body>
 </html>
-
 
 
