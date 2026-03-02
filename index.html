@@ -205,53 +205,42 @@ function onScanSuccess(decodedText){
     if (scannerBusy) return;
     scannerBusy = true;
 
-    let data;
-
-    // محاولة قراءة QR
-    try { 
-        data = JSON.parse(decodedText); 
-    } catch (e) {
-        showPopup("خطأ", "QR غير صالح");
-        scannerBusy = false;
-        return setTimeout(() => startScanner(), 500);
-    }
-
-    // التحقق من وجود ID و TOKEN
-    if (!data.ID || !data.TOKEN) {
-        showPopup("خطأ", "QR غير مكتمل");
-        scannerBusy = false;
-        return setTimeout(() => startScanner(), 500);
-    }
-
-    // تشغيل صوت النجاح
-    if (soundEnabled) {
-        const audio = document.getElementById("successSound");
-        audio.play().catch(()=>{});
-    }
-
-    // إيقاف الماسح بعد التأكد من صحة QR
     scanner.stop().then(() => {
 
-        // تسجيل الحضور
+        if(soundEnabled){
+    const audio = document.getElementById("successSound");
+    audio.play().catch(()=>{});
+}
+
+// تم حذف نافذة "جاري التحقق..."
+
+
+        let data;
+        try { data = JSON.parse(decodedText); }
+        catch {
+            scannerBusy = false;
+            return setTimeout(() => startScanner(), 500);
+        }
+
+        if(!data.ID || !data.TOKEN){
+            scannerBusy = false;
+            return setTimeout(() => startScanner(), 500);
+        }
+
         recordAttendance(data);
 
     }).catch(() => {
-        // في حال فشل إيقاف الماسح
         scannerBusy = false;
         startScanner();
     });
 }
-
 
 /* تسجيل الحضور في Firebase */
 function recordAttendance(stu){
 
     const now = new Date();
     const today = now.toISOString().split("T")[0];
-
-    // وقت بصيغة HH:MM فقط
-    const time = now.toTimeString().slice(0,5);
-
+    const time = now.toLocaleTimeString("ar-SA");
     const firstName = (stu.NAME || "").split(" ")[0];
 
     const ref = db.ref("attendance/" + today + "/" + stu.ID);
@@ -270,8 +259,7 @@ function recordAttendance(stu){
             return;
         }
 
-        // حساب الحالة الصحيحة
-        const status = getAttendanceStatus(time);
+        const status = "حاضر";
 
         ref.set({
             id: stu.ID,
@@ -284,7 +272,7 @@ function recordAttendance(stu){
             status: status
         }).then(() => {
 
-            showPopup(firstName, "تم تسجيل: " + status);
+            showPopup(firstName, "تم تسجيل الحضور");
 
             setTimeout(() => {
                 scannerBusy = false;
@@ -304,7 +292,6 @@ function recordAttendance(stu){
 
     });
 }
-
 
 /* تحديث الشيت عند الطلب */
 function syncToSheet() {
