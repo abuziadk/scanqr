@@ -293,6 +293,28 @@ function recordAttendance(stu){
     });
 }
 
+function getAttendanceStatus(timeStr) {
+    if (!timeStr) return "غائب";
+
+    // تحويل الوقت إلى دقائق
+    const [h, m] = timeStr.split(":").map(Number);
+    const studentMin = h * 60 + m;
+
+    const [sH, sM] = START_PRESENT.split(":").map(Number);
+    const startMin = sH * 60 + sM;
+
+    const [eH, eM] = END_PRESENT.split(":").map(Number);
+    const endPresentMin = eH * 60 + eM;
+
+    const [lH, lM] = END_LATE.split(":").map(Number);
+    const endLateMin = lH * 60 + lM;
+
+    if (studentMin < startMin) return "غير محسوب";
+    if (studentMin <= endPresentMin) return "حاضر";
+    if (studentMin <= endLateMin) return "متأخر";
+    return "غائب";
+}
+
 /* تحديث الشيت عند الطلب */
 function syncToSheet() {
     fetch("https://script.google.com/macros/s/AKfycbzif8zmJWSVYHeUx-IqA_THoPRZieuYWEJNi-3prV0GQXfkUoY_oCoBZkEacVrcC-u-/exec?action=sync")
@@ -303,12 +325,10 @@ function syncToSheet() {
 
 startScanner();
 
+
 </script>
 
 </body>
 </html>
-
-
-
 
 
