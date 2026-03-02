@@ -295,7 +295,7 @@ function recordAttendance(stu){
 
 /* تحديث الشيت عند الطلب */
 function syncToSheet() {
-    fetch("https://script.google.com/macros/s/AKfycbw3F5TiR_sP9L3-LdndSbBgQ799SkjST48B5Lhv-bcHFdqVMcLxcf9dmcmybetIWfjNFA/exec?action=sync")
+    fetch("https://script.google.com/macros/s/AKfycbzif8zmJWSVYHeUx-IqA_THoPRZieuYWEJNi-3prV0GQXfkUoY_oCoBZkEacVrcC-u-/exec?action=sync")
         .then(r => r.text())
         .then(msg => { showToast("تم تحديث الشيت بنجاح"); })
         .catch(() => { showToast("فشل تحديث الشيت"); });
@@ -307,6 +307,7 @@ startScanner();
 
 </body>
 </html>
+
 
 
 
