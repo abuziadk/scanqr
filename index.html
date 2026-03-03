@@ -174,68 +174,73 @@ function enableSound() {
 
 
 // ======================= تشغيل الماسح =======================
-function startScanner(){
-    scanner = new Html5Qrcode("reader");
-    const config = { fps:10, qrbox:{width:280,height:280} };
+function startScanner() {
+    try {
+        scanner = new Html5Qrcode("reader");
+    } catch(e) {
+        console.log("Scanner init error:", e);
+        return;
+    }
+
+    const config = { fps: 10, qrbox: { width: 280, height: 280 } };
 
     scanner.start(
-        {facingMode:{exact:"environment"}},
+        { facingMode: "environment" },
         config,
         onScanSuccess,
-        ()=>{}
-    ).catch(()=>{
-        Html5Qrcode.getCameras().then(cams=>{
-            if(!cams.length){ showToast("لا توجد كاميرات"); return; }
-            scanner.start(cams[0].id,config,onScanSuccess,()=>{});
+        () => {}
+    ).catch(err => {
+        Html5Qrcode.getCameras().then(cams => {
+            if (!cams.length) {
+                showToast("لا توجد كاميرات");
+                return;
+            }
+            scanner.start(cams[0].id, config, onScanSuccess, () => {});
         });
     });
 }
 
-
-/* البطاقة المنبثقة */
-function showPopup(name, status){
-    document.getElementById("popupName").textContent = name;
-    document.getElementById("popupStatus").textContent = status;
-    const box = document.getElementById("popupBox");
-    box.classList.add("show");
-    setTimeout(()=>{ box.classList.remove("show"); }, 2000);
-}
-
 /* عند قراءة QR */
-function onScanSuccess(decodedText){
+let scannerBusy = false;
+
+function onScanSuccess(decodedText) {
 
     if (scannerBusy) return;
     scannerBusy = true;
 
+    let data;
+
+    // قراءة QR
+    try {
+        data = JSON.parse(decodedText);
+    } catch (e) {
+        showPopup("خطأ", "QR غير صالح");
+        scannerBusy = false;
+        return setTimeout(startScanner, 600);
+    }
+
+    // التحقق من البيانات
+    if (!data.ID || !data.TOKEN) {
+        showPopup("خطأ", "QR غير مكتمل");
+        scannerBusy = false;
+        return setTimeout(startScanner, 600);
+    }
+
+    // تشغيل صوت النجاح
+    if (soundEnabled) {
+        const audio = document.getElementById("successSound");
+        audio.play().catch(() => {});
+    }
+
+    // إيقاف الماسح ثم تسجيل الحضور
     scanner.stop().then(() => {
-
-        if(soundEnabled){
-    const audio = document.getElementById("successSound");
-    audio.play().catch(()=>{});
-}
-
-// تم حذف نافذة "جاري التحقق..."
-
-
-        let data;
-        try { data = JSON.parse(decodedText); }
-        catch {
-            scannerBusy = false;
-            return setTimeout(() => startScanner(), 500);
-        }
-
-        if(!data.ID || !data.TOKEN){
-            scannerBusy = false;
-            return setTimeout(() => startScanner(), 500);
-        }
-
         recordAttendance(data);
-
     }).catch(() => {
         scannerBusy = false;
         startScanner();
     });
 }
+
 function getAttendanceStatus(timeStr) {
     if (!timeStr) return "غائب";
 
@@ -260,12 +265,20 @@ function getAttendanceStatus(timeStr) {
 
 
 /* تسجيل الحضور في Firebase */
-function recordAttendance(stu){
+function recordAttendance(stu) {
 
     const now = new Date();
     const today = now.toISOString().split("T")[0];
-    const time = now.toLocaleTimeString("ar-SA");
-    const firstName = (stu.NAME || "").split(" ")[0];
+
+    const timeShort = now.toTimeString().slice(0, 5);
+    const timeFull = now.toLocaleTimeString("ar-SA");
+
+    const name = stu.NAME || "";
+    const grade = stu.GRADE || "";
+    const className = stu.CLASS || "";
+    const parentMobile = stu.parentMobile || "";
+
+    const firstName = name.split(" ")[0];
 
     const ref = db.ref("attendance/" + today + "/" + stu.ID);
 
@@ -283,20 +296,20 @@ function recordAttendance(stu){
             return;
         }
 
-        const status = "حاضر";
+        const status = getAttendanceStatus(timeShort);
 
         ref.set({
             id: stu.ID,
-            name: stu.NAME,
-            grade: stu.GRADE,
-            class: stu.CLASS,
-            parentMobile: stu.parentMobile,
-            time: time,
+            name: name,
+            grade: grade,
+            class: className,
+            parentMobile: parentMobile,
+            time: timeFull,
             date: today,
             status: status
         }).then(() => {
 
-            showPopup(firstName, "تم تسجيل الحضور");
+            showPopup(firstName, "تم تسجيل: " + status);
 
             setTimeout(() => {
                 scannerBusy = false;
