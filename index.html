@@ -207,6 +207,7 @@ function onScanSuccess(decodedText){
 
     let data;
 
+    // 1) قراءة QR قبل إيقاف الكاميرا
     try { 
         data = JSON.parse(decodedText); 
     } catch (e) {
@@ -215,19 +216,25 @@ function onScanSuccess(decodedText){
         return setTimeout(startScanner, 600);
     }
 
+    // 2) التحقق من وجود ID و TOKEN
     if (!data.ID || !data.TOKEN) {
         showPopup("خطأ", "QR غير مكتمل");
         scannerBusy = false;
         return setTimeout(startScanner, 600);
     }
 
+    // 3) تشغيل صوت النجاح
     if (soundEnabled) {
         const audio = document.getElementById("successSound");
         audio.play().catch(()=>{});
     }
 
+    // 4) الآن فقط نوقف الكاميرا
     scanner.stop().then(() => {
+
+        // 5) تسجيل الحضور
         recordAttendance(data);
+
     }).catch(() => {
         scannerBusy = false;
         startScanner();
