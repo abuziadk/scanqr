@@ -205,34 +205,54 @@ function onScanSuccess(decodedText){
     if (scannerBusy) return;
     scannerBusy = true;
 
+    let data;
+
+    try { 
+        data = JSON.parse(decodedText); 
+    } catch (e) {
+        showPopup("خطأ", "QR غير صالح");
+        scannerBusy = false;
+        return setTimeout(startScanner, 600);
+    }
+
+    if (!data.ID || !data.TOKEN) {
+        showPopup("خطأ", "QR غير مكتمل");
+        scannerBusy = false;
+        return setTimeout(startScanner, 600);
+    }
+
+    if (soundEnabled) {
+        const audio = document.getElementById("successSound");
+        audio.play().catch(()=>{});
+    }
+
     scanner.stop().then(() => {
-
-        if(soundEnabled){
-    const audio = document.getElementById("successSound");
-    audio.play().catch(()=>{});
-}
-
-// تم حذف نافذة "جاري التحقق..."
-
-
-        let data;
-        try { data = JSON.parse(decodedText); }
-        catch {
-            scannerBusy = false;
-            return setTimeout(() => startScanner(), 500);
-        }
-
-        if(!data.ID || !data.TOKEN){
-            scannerBusy = false;
-            return setTimeout(() => startScanner(), 500);
-        }
-
         recordAttendance(data);
-
     }).catch(() => {
         scannerBusy = false;
         startScanner();
     });
+}
+
+function getAttendanceStatus(timeStr) {
+    if (!timeStr) return "غائب";
+
+    const [h, m] = timeStr.split(":").map(Number);
+    const studentMin = h * 60 + m;
+
+    const [sH, sM] = START_PRESENT.split(":").map(Number);
+    const startMin = sH * 60 + sM;
+
+    const [eH, eM] = END_PRESENT.split(":").map(Number);
+    const endPresentMin = eH * 60 + eM;
+
+    const [lH, lM] = END_LATE.split(":").map(Number);
+    const endLateMin = lH * 60 + lM;
+
+    if (studentMin < startMin) return "غير محسوب";
+    if (studentMin <= endPresentMin) return "حاضر";
+    if (studentMin <= endLateMin) return "متأخر";
+    return "غائب";
 }
 
 /* تسجيل الحضور في Firebase */
@@ -240,7 +260,13 @@ function recordAttendance(stu){
 
     const now = new Date();
     const today = now.toISOString().split("T")[0];
-    const time = now.toLocaleTimeString("ar-SA");
+
+    // وقت مختصر لحساب الحالة
+    const timeShort = now.toTimeString().slice(0,5);
+
+    // وقت كامل للعرض
+    const timeFull = now.toLocaleTimeString("ar-SA");
+
     const firstName = (stu.NAME || "").split(" ")[0];
 
     const ref = db.ref("attendance/" + today + "/" + stu.ID);
@@ -259,7 +285,8 @@ function recordAttendance(stu){
             return;
         }
 
-        const status = "حاضر";
+        // حساب الحالة الصحيحة
+        const status = getAttendanceStatus(timeShort);
 
         ref.set({
             id: stu.ID,
@@ -267,12 +294,12 @@ function recordAttendance(stu){
             grade: stu.GRADE,
             class: stu.CLASS,
             parentMobile: stu.parentMobile,
-            time: time,
+            time: timeFull,
             date: today,
             status: status
         }).then(() => {
 
-            showPopup(firstName, "تم تسجيل الحضور");
+            showPopup(firstName, "تم تسجيل: " + status);
 
             setTimeout(() => {
                 scannerBusy = false;
