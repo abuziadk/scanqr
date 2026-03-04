@@ -175,7 +175,7 @@ function enableSound() {
 /* دالة حساب حالة الطالب */
 const START_PRESENT = "00:00";
 const END_PRESENT   = "00:33:00";
-const END_LATE      = "00:36:00";
+const END_LATE      = "01:36:00";
 
 function getAttendanceStatus(timeStr) {
     if (!timeStr) return "غائب";
@@ -271,7 +271,9 @@ function onScanSuccess(decodedText){
 function recordAttendance(stu){
 
     const now = new Date();
-    const today = now.toISOString().split("T")[0];
+
+    // التاريخ الصحيح حسب توقيت السعودية
+    const today = now.toLocaleDateString("en-CA");
 
     const timeShort = now.toTimeString().slice(0,5);
     const timeFull = now.toLocaleTimeString("ar-SA");
@@ -294,7 +296,6 @@ function recordAttendance(stu){
             return;
         }
 
-        // حساب الحالة الصحيحة
         const status = getAttendanceStatus(timeShort);
 
         ref.set({
@@ -328,6 +329,7 @@ function recordAttendance(stu){
 
     });
 }
+
 
 /* تحديث الشيت */
 function syncToSheet() {
