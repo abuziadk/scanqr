@@ -8,6 +8,27 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
+<!-- Firebase COMPAT VERSION (المطلوبة للمتصفح) -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCtzKF6tPdNF9NP34xbz0VNALLU_pW5Tkw",
+    authDomain: "attendancesystem-d46ba.firebaseapp.com",
+    databaseURL: "https://attendancesystem-d46ba-default-rtdb.firebaseio.com/",
+	
+    projectId: "attendancesystem-d46ba",
+    storageBucket: "attendancesystem-d46ba.firebasestorage.app",
+    messagingSenderId: "472598700266",
+    appId: "1:472598700266:web:de916774d90fbe518cb793",
+    measurementId: "G-Z6YXDGFHRY"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+</script>
+
 <style>
 body{
     font-family:"Tajawal",sans-serif;
@@ -15,9 +36,7 @@ body{
     min-height:100vh;
 }
 
-.moe-green{
-    color:#017c67;
-}
+.moe-green{ color:#017c67; }
 
 .moe-card{
     background:rgba(255,255,255,.9);
@@ -115,6 +134,15 @@ body{
 تفعيل الصوت
 </button>
 
+<!-- زر تحديث الشيت -->
+<button onclick="syncToSheet()" class="moe-btn w-full mb-4 bg-blue-600">
+<button onclick="syncSettings()" class="moe-btn w-full mb-4 bg-purple-600">
+    تحديث الإعدادات
+</button>
+
+تحديث الشيت
+</button>
+
 <div id="reader" class="w-full border-2 border-green-700 rounded-xl"></div>
 
 </div>
@@ -122,32 +150,48 @@ body{
 
 <script>
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwp-81YMgNMmz37LkeLr5Y4DEw6_iSi7ifQRWirz5MQ0g5e4wn9jnUScIfwjnNvxBqb/exec";
+// زر تحديث الإعدادات من الشيت
+function syncSettings() {
+    fetch("https://script.google.com/macros/s/AKfycbzif8zmJWSVYHeUx-IqA_THoPRZieuYWEJNi-3prV0GQXfkUoY_oCoBZkEacVrcC-u-/exec?action=syncSettings")
+        .then(r => r.text())
+        .then(() => showToast("تم تحديث الإعدادات"))
+        .catch(() => showToast("فشل تحديث الإعدادات"));
+}
+
+// إرسال SMS إلى sms_queue
+function sendSMS(mobile, message) {
+    db.ref("sms_queue").push({
+        mobile: mobile,
+        message: message,
+        sent: false
+    });
+}
+
+// إعدادات SMS
+const SMS_API_URL = "https://app.mobile.net.sa/api/v1/send";
+const SMS_API_KEY = "XRGdRQaYcesQbFy6rtzS2pOGARSHXBG7yAqC4rDr";
+const SMS_SENDER_NAME = "School1";
 
 let scanner = null;
 let soundEnabled = false;
+let scannerBusy = false;
 
 /* Toast */
 function showToast(msg) {
     const t = document.getElementById("toast");
     t.textContent = msg;
     t.style.display = "block";
-
-    setTimeout(() => {
-        t.style.display = "none";
-    }, 2000);
+    setTimeout(() => { t.style.display = "none"; }, 2000);
 }
 
-/* تفعيل الصوت بدون تجميد الكاميرا */
+/* تفعيل الصوت */
 function enableSound() {
     const audio = document.getElementById("successSound");
-
     audio.muted = true;
     audio.play().then(() => {
         audio.pause();
         audio.currentTime = 0;
         audio.muted = false;
-
         soundEnabled = true;
         showToast("تم تفعيل الصوت بنجاح ✔");
     }).catch(() => {
@@ -155,27 +199,51 @@ function enableSound() {
     });
 }
 
+/* تحميل الإعدادات من Firebase */
+let SETTINGS = {
+    END_PRESENT: "9:00",
+    END_LATE: "10:40",
+    ABSENCE_SMS_TIME: "11:00"
+};
+
+db.ref("settings").once("value").then(snap => {
+    if (snap.exists()) {
+        SETTINGS = snap.val();
+        console.log("Settings loaded:", SETTINGS);
+    }
+});
+
+/* حساب حالة الطالب */
+function getAttendanceStatus(timeStr) {
+    if (!timeStr) return "غائب";
+
+    const [h, m] = timeStr.split(":").map(Number);
+    const studentMin = h * 60 + m;
+
+    const [pH, pM] = SETTINGS.END_PRESENT.split(":").map(Number);
+    const endPresentMin = pH * 60 + pM;
+
+    const [lH, lM] = SETTINGS.END_LATE.split(":").map(Number);
+    const endLateMin = lH * 60 + lM;
+
+    if (studentMin <= endPresentMin) return "حاضر";
+    if (studentMin <= endLateMin) return "متأخر";
+    return "غائب";
+}
+
 /* تشغيل الكاميرا */
 function startScanner(){
-
     scanner = new Html5Qrcode("reader");
-
-    const config = {
-        fps:10,
-        qrbox:{width:280,height:280}
-    };
+    const config = { fps:10, qrbox:{width:280,height:280} };
 
     scanner.start(
-        {facingMode:{exact:"environment"}},
+        {facingMode:"environment"},
         config,
         onScanSuccess,
         ()=>{}
     ).catch(()=>{
         Html5Qrcode.getCameras().then(cams=>{
-            if(!cams.length){
-                showToast("لا توجد كاميرات متاحة");
-                return;
-            }
+            if(!cams.length){ showToast("لا توجد كاميرات"); return; }
             scanner.start(cams[0].id,config,onScanSuccess,()=>{});
         });
     });
@@ -185,78 +253,130 @@ function startScanner(){
 function showPopup(name, status){
     document.getElementById("popupName").textContent = name;
     document.getElementById("popupStatus").textContent = status;
-
     const box = document.getElementById("popupBox");
     box.classList.add("show");
-
-    setTimeout(()=>{
-        box.classList.remove("show");
-    }, 2000);
+    setTimeout(()=>{ box.classList.remove("show"); }, 2000);
 }
 
 /* عند قراءة QR */
 function onScanSuccess(decodedText){
 
-    try { scanner.stop(); } catch(e){}
+    if (scannerBusy) return;
+    scannerBusy = true;
 
-    // تشغيل الصوت فورًا عند المسح
-    if(soundEnabled){
+    let data;
+
+    try { 
+        data = JSON.parse(decodedText); 
+    } catch (e) {
+        showPopup("خطأ", "QR غير صالح");
+        scannerBusy = false;
+        return setTimeout(startScanner, 600);
+    }
+
+    if (!data.ID || !data.TOKEN) {
+        showPopup("خطأ", "QR غير مكتمل");
+        scannerBusy = false;
+        return setTimeout(startScanner, 600);
+    }
+
+    if (soundEnabled) {
         const audio = document.getElementById("successSound");
         audio.play().catch(()=>{});
     }
 
-    // نافذة فورية قبل الاتصال بالسيرفر
-    showPopup("جاري التحقق...", "يتم الآن تسجيل الحضور");
-
-    let data;
-
-    try{
-        data = JSON.parse(decodedText);
-    }catch{
-        setTimeout(startScanner,1200);
-        return;
-    }
-
-    if(!data.ID || !data.TOKEN){
-        setTimeout(startScanner,1200);
-        return;
-    }
-
-    recordAttendance(data);
-
-    setTimeout(startScanner,1500);
+    scanner.stop().then(() => {
+        recordAttendance(data);
+    }).catch(() => {
+        scannerBusy = false;
+        startScanner();
+    });
 }
 
 /* تسجيل الحضور */
 function recordAttendance(stu){
 
-    const form = new URLSearchParams();
-    form.append("action","attendance");
-    form.append("ID",stu.ID);
-    form.append("name",stu.NAME || "");
-    form.append("grade",stu.GRADE || "");
-    form.append("class",stu.CLASS || "");
-    form.append("parentMobile",stu.parentMobile || "");
-    form.append("token",stu.TOKEN);
+    const now = new Date();
+    const today = now.toLocaleDateString("en-CA");
 
-    const firstName = (stu.NAME || "").split(" ")[0] || "";
+    const timeShort = now.toTimeString().slice(0,5);
+    const timeFull = now.toLocaleTimeString("ar-SA");
 
-    fetch(API_URL,{
-        method:"POST",
-        body:form
-    })
-    .then(r=>r.text())
-    .then(msg=>{
-        showPopup(firstName, msg);
-    })
-    .catch(()=>{
-        showPopup("خطأ", "تعذر الاتصال بالخادم");
+    const firstName = (stu.NAME || "").split(" ")[0];
+
+    const ref = db.ref("attendance/" + today + "/" + stu.ID);
+
+    ref.once("value").then(snapshot => {
+
+        if (snapshot.exists()) {
+            const status = snapshot.val().status;
+            showPopup(firstName, "مسجل مسبقًا - " + status);
+
+            setTimeout(() => {
+                scannerBusy = false;
+                startScanner();
+            }, 1200);
+
+            return;
+        }
+
+        const status = getAttendanceStatus(timeShort);
+
+        // إرسال رسالة التأخر فقط
+        if (status === "متأخر" && stu.parentMobile) {
+            const msg = `ابنكم (${firstName}) تأخر عن الحضور وقت الوصول ${timeFull}`;
+            sendSMS(stu.parentMobile, msg);
+        }
+
+        ref.set({
+            id: stu.ID,
+            name: stu.NAME,
+            grade: stu.GRADE,
+            class: stu.CLASS,
+            parentMobile: stu.parentMobile,
+            time: timeFull,
+            date: today,
+            status: status
+        }).then(() => {
+
+            showPopup(firstName, "تم تسجيل: " + status);
+
+            setTimeout(() => {
+                scannerBusy = false;
+                startScanner();
+            }, 1200);
+
+        }).catch(() => {
+
+            showPopup("خطأ", "تعذر تسجيل الحضور");
+
+            setTimeout(() => {
+                scannerBusy = false;
+                startScanner();
+            }, 1200);
+
+        });
+
     });
+}
+
+/* تحديث الشيت */
+function syncToSheet() {
+    fetch("https://script.google.com/macros/s/AKfycbzif8zmJWSVYHeUx-IqA_THoPRZieuYWEJNi-3prV0GQXfkUoY_oCoBZkEacVrcC-u-/exec?action=sync")
+        .then(r => r.text())
+        .then(msg => { showToast("تم تحديث الشيت بنجاح"); })
+        .catch(() => { showToast("فشل تحديث الشيت"); });
 }
 
 startScanner();
 
 </script>
 
+
+
+</script>
+
 </body>
 </html>
+
+
