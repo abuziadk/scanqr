@@ -8,7 +8,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-<!-- Firebase COMPAT VERSION -->
+<!-- Firebase COMPAT VERSION (المطلوبة للمتصفح) -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
@@ -17,6 +17,7 @@
     apiKey: "AIzaSyCtzKF6tPdNF9NP34xbz0VNALLU_pW5Tkw",
     authDomain: "attendancesystem-d46ba.firebaseapp.com",
     databaseURL: "https://attendancesystem-d46ba-default-rtdb.firebaseio.com/",
+    
     projectId: "attendancesystem-d46ba",
     storageBucket: "attendancesystem-d46ba.firebasestorage.app",
     messagingSenderId: "472598700266",
@@ -51,21 +52,6 @@ body{
     padding:10px 18px;
     border-radius:10px;
     font-weight:600;
-}
-
-/* مربع التركيز فوق الفيديو */
-#focus-box {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 260px;
-    height: 260px;
-    transform: translate(-50%, -50%);
-    border: 3px solid #00ff88;
-    border-radius: 12px;
-    box-shadow: 0 0 20px #00ff88;
-    z-index: 999;
-    pointer-events: none;
 }
 
 /* البطاقة المنبثقة */
@@ -119,9 +105,6 @@ body{
 
 <body>
 
-<!-- الإطار الأخضر -->
-<div id="focus-box"></div>
-
 <!-- صوت النجاح -->
 <audio id="successSound" src="success.mp3"></audio>
 
@@ -146,19 +129,19 @@ body{
 </p>
 </div>
 
+<!-- زر تفعيل الصوت -->
 <button onclick="enableSound()" class="moe-btn w-full mb-4">
 تفعيل الصوت
 </button>
 
+<!-- زر تحديث الشيت -->
 <button onclick="syncToSheet()" class="moe-btn w-full mb-4 bg-blue-600">
 تحديث الشيت
 </button>
-
 <button onclick="syncSettings()" class="moe-btn w-full mb-4 bg-purple-600">
     تحديث الإعدادات
 </button>
 
-<!-- الماسح -->
 <div id="reader" class="w-full border-2 border-green-700 rounded-xl"></div>
 
 </div>
@@ -166,17 +149,27 @@ body{
 
 <script>
 
-/* إعدادات الكاميرا الخلفية */
-const cameraConstraints = {
-    facingMode: { ideal: "environment" },
-    width: { ideal: 1280 },
-    height: { ideal: 720 },
-    advanced: [
-        { focusMode: "continuous" },
-        { exposureMode: "continuous" },
-        { whiteBalanceMode: "continuous" }
-    ]
-};
+// زر تحديث الإعدادات من الشيت
+function syncSettings() {
+    fetch("https://script.google.com/macros/s/AKfycbzif8zmJWSVYHeUx-IqA_THoPRZieuYWEJNi-3prV0GQXfkUoY_oCoBZkEacVrcC-u-/exec?action=syncSettings")
+        .then(r => r.text())
+        .then(() => showToast("تم تحديث الإعدادات"))
+        .catch(() => showToast("فشل تحديث الإعدادات"));
+}
+
+// إرسال SMS إلى sms_queue
+function sendSMS(mobile, message) {
+    db.ref("sms_queue").push({
+        mobile: mobile,
+        message: message,
+        sent: false
+    });
+}
+
+// إعدادات SMS
+const SMS_API_URL = "https://app.mobile.net.sa/api/v1/send";
+const SMS_API_KEY = "XRGdRQaYcesQbFy6rtzS2pOGARSHXBG7yAqC4rDr";
+const SMS_SENDER_NAME = "School1";
 
 let scanner = null;
 let soundEnabled = false;
@@ -199,28 +192,60 @@ function enableSound() {
         audio.currentTime = 0;
         audio.muted = false;
         soundEnabled = true;
-        showToast("تم تفعيل الصوت ✔");
+        showToast("تم تفعيل الصوت بنجاح ✔");
+    }).catch(() => {
+        showToast("اضغط مرة أخرى لتفعيل الصوت");
     });
 }
 
-/* تشغيل الماسح */
+/* تحميل الإعدادات من Firebase */
+let SETTINGS = {
+    END_PRESENT: "9:00",
+    END_LATE: "10:40",
+    ABSENCE_SMS_TIME: "11:00"
+};
+
+db.ref("settings").once("value").then(snap => {
+    if (snap.exists()) {
+        SETTINGS = snap.val();
+        console.log("Settings loaded:", SETTINGS);
+    }
+});
+
+/* حساب حالة الطالب */
+function getAttendanceStatus(timeStr) {
+    if (!timeStr) return "غائب";
+
+    const [h, m] = timeStr.split(":").map(Number);
+    const studentMin = h * 60 + m;
+
+    const [pH, pM] = SETTINGS.END_PRESENT.split(":").map(Number);
+    const endPresentMin = pH * 60 + pM;
+
+    const [lH, lM] = SETTINGS.END_LATE.split(":").map(Number);
+    const endLateMin = lH * 60 + lM;
+
+    if (studentMin <= endPresentMin) return "حاضر";
+    if (studentMin <= endLateMin) return "متأخر";
+    return "غائب";
+}
+
+/* تشغيل الكاميرا */
 function startScanner(){
     scanner = new Html5Qrcode("reader");
+    const config = { fps:10, qrbox:{width:280,height:280} };
 
     scanner.start(
-        cameraConstraints,
-        {
-            fps: 12,
-            qrbox: { width: 260, height: 260 },
-            aspectRatio: 1.0,
-            disableFlip: true,
-            experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true
-            }
-        },
+        {facingMode:"environment"},
+        config,
         onScanSuccess,
-        () => {}
-    );
+        ()=>{}
+    ).catch(()=>{
+        Html5Qrcode.getCameras().then(cams=>{
+            if(!cams.length){ showToast("لا توجد كاميرات"); return; }
+            scanner.start(cams[0].id,config,onScanSuccess,()=>{});
+        });
+    });
 }
 
 /* البطاقة المنبثقة */
@@ -234,36 +259,48 @@ function showPopup(name, status){
 
 /* عند قراءة QR */
 function onScanSuccess(decodedText){
+
     if (scannerBusy) return;
     scannerBusy = true;
 
     let data;
-    try { data = JSON.parse(decodedText); }
-    catch {
+
+    try { 
+        data = JSON.parse(decodedText); 
+    } catch (e) {
         showPopup("خطأ", "QR غير صالح");
-        return restartScanner();
+        scannerBusy = false;
+        return setTimeout(startScanner, 600);
     }
 
     if (!data.ID || !data.TOKEN) {
         showPopup("خطأ", "QR غير مكتمل");
-        return restartScanner();
+        scannerBusy = false;
+        return setTimeout(startScanner, 600);
     }
 
     if (soundEnabled) {
-        document.getElementById("successSound").play().catch(()=>{});
+        const audio = document.getElementById("successSound");
+        audio.play().catch(()=>{});
     }
 
     scanner.stop().then(() => {
         recordAttendance(data);
+    }).catch(() => {
+        scannerBusy = false;
+        startScanner();
     });
 }
 
 /* تسجيل الحضور */
 function recordAttendance(stu){
+
     const now = new Date();
     const today = now.toLocaleDateString("en-CA");
+
     const timeShort = now.toTimeString().slice(0,5);
     const timeFull = now.toLocaleTimeString("ar-SA");
+
     const firstName = (stu.NAME || "").split(" ")[0];
 
     const ref = db.ref("attendance/" + today + "/" + stu.ID);
@@ -271,11 +308,24 @@ function recordAttendance(stu){
     ref.once("value").then(snapshot => {
 
         if (snapshot.exists()) {
-            showPopup(firstName, "مسجل مسبقًا");
-            return restartScanner();
+            const status = snapshot.val().status;
+            showPopup(firstName, "مسجل مسبقًا - " + status);
+
+            setTimeout(() => {
+                scannerBusy = false;
+                startScanner();
+            }, 1200);
+
+            return;
         }
 
         const status = getAttendanceStatus(timeShort);
+
+        // إرسال رسالة التأخر فقط
+        if (status === "متأخر" && stu.parentMobile) {
+            const msg = `ابنكم (${firstName}) تأخر عن الحضور وقت الوصول ${timeFull}`;
+            sendSMS(stu.parentMobile, msg);
+        }
 
         ref.set({
             id: stu.ID,
@@ -287,24 +337,34 @@ function recordAttendance(stu){
             date: today,
             status: status
         }).then(() => {
-            showPopup(firstName, "تم تسجيل: " + status);
-            restartScanner();
-        });
-    });
-}
 
-function restartScanner(){
-    setTimeout(() => {
-        scannerBusy = false;
-        startScanner();
-    }, 1200);
+            showPopup(firstName, "تم تسجيل: " + status);
+
+            setTimeout(() => {
+                scannerBusy = false;
+                startScanner();
+            }, 1200);
+
+        }).catch(() => {
+
+            showPopup("خطأ", "تعذر تسجيل الحضور");
+
+            setTimeout(() => {
+                scannerBusy = false;
+                startScanner();
+            }, 1200);
+
+        });
+
+    });
 }
 
 /* تحديث الشيت */
 function syncToSheet() {
     fetch("https://script.google.com/macros/s/AKfycbzif8zmJWSVYHeUx-IqA_THoPRZieuYWEJNi-3prV0GQXfkUoY_oCoBZkEacVrcC-u-/exec?action=sync")
-        .then(() => showToast("تم تحديث الشيت"))
-        .catch(() => showToast("فشل تحديث الشيت"));
+        .then(r => r.text())
+        .then(msg => { showToast("تم تحديث الشيت بنجاح"); })
+        .catch(() => { showToast("فشل تحديث الشيت"); });
 }
 
 startScanner();
