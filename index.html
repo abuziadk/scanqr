@@ -2,8 +2,6 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8" />
-
-<!-- مهم جدًا لأجهزة أندرويد -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
 <title>مسح QR وتسجيل الحضور</title>
@@ -11,7 +9,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-<!-- Firebase COMPAT -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
@@ -30,7 +28,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* إرسال SMS إلى sms_queue */
+/* إرسال SMS */
 function sendSMS(mobile, message) {
     db.ref("sms_queue").push({
         mobile: mobile,
@@ -38,11 +36,6 @@ function sendSMS(mobile, message) {
         sent: false
     });
 }
-
-// إعدادات SMS (لو احتجتها لاحقًا من السيرفر)
-const SMS_API_URL = "https://app.mobile.net.sa/api/v1/send";
-const SMS_API_KEY = "XRGdRQaYcesQbFy6rtzS2pOGARSHXBG7yAqC4rDr";
-const SMS_SENDER_NAME = "School1";
 </script>
 
 <style>
@@ -54,7 +47,6 @@ body{
     height:100vh;
     display:flex;
     flex-direction:column;
-    justify-content:flex-start;
     align-items:center;
 }
 
@@ -107,7 +99,7 @@ body{
     z-index: 99999;
 }
 
-/* الماسح Full Screen */
+/* Full Screen Scanner */
 #reader {
     width: 100vw;
     height: 70vh;
@@ -120,13 +112,10 @@ body{
 
 <body>
 
-<!-- صوت النجاح -->
 <audio id="successSound" src="success.mp3"></audio>
 
-<!-- Toast -->
 <div id="toast"></div>
 
-<!-- Popup -->
 <div id="popupBox">
     <div id="popupName"></div>
     <div id="popupStatus"></div>
@@ -136,16 +125,12 @@ body{
 مسح QR وتسجيل الحضور
 </h1>
 
-<p class="text-center text-gray-500 mb-2">
-مدرسة تحفيظ القرآن الكريم
-</p>
+<p class="text-center text-gray-500 mb-2">مدرسة تحفيظ القرآن الكريم</p>
 
-<!-- أزرار التحكم -->
 <div class="toggle-btn" onclick="toggleScanner()">تشغيل / إيقاف الماسح</div>
 <div class="toggle-btn" onclick="enableSound()">تفعيل الصوت</div>
 <div class="toggle-btn" style="background:#005bbb" onclick="syncToSheet()">تحديث الشيت</div>
 
-<!-- الماسح -->
 <div id="reader"></div>
 
 <script>
@@ -166,7 +151,7 @@ function showPopup(name,status){
     setTimeout(()=>{ box.classList.remove("show"); },2000);
 }
 
-/* تفعيل الصوت */
+/* الصوت */
 let soundEnabled = false;
 function enableSound(){
     const audio = document.getElementById("successSound");
@@ -177,19 +162,17 @@ function enableSound(){
         audio.muted = false;
         soundEnabled = true;
         showToast("تم تفعيل الصوت ✔");
-    }).catch(()=>{
-        showToast("اضغط مرة أخرى لتفعيل الصوت");
     });
 }
 
-/* تحميل الإعدادات */
+/* الإعدادات */
 let SETTINGS = { END_PRESENT:"9:00", END_LATE:"10:40" };
 db.ref("settings").once("value").then(s=>{ if(s.exists()) SETTINGS=s.val(); });
 
 function getAttendanceStatus(timeStr){
     if(!timeStr) return "غائب";
     const [h,m] = timeStr.split(":").map(Number);
-    const studentMin = h*60+m;
+    const t = h*60+m;
 
     const [pH,pM] = SETTINGS.END_PRESENT.split(":").map(Number);
     const endPresent = pH*60+pM;
@@ -197,12 +180,12 @@ function getAttendanceStatus(timeStr){
     const [lH,lM] = SETTINGS.END_LATE.split(":").map(Number);
     const endLate = lH*60+lM;
 
-    if(studentMin <= endPresent) return "حاضر";
-    if(studentMin <= endLate) return "متأخر";
+    if(t <= endPresent) return "حاضر";
+    if(t <= endLate) return "متأخر";
     return "غائب";
 }
 
-/* تشغيل / إيقاف الماسح */
+/* QR Scanner */
 let scanner = null;
 let scannerRunning = false;
 let scannerBusy = false;
@@ -249,11 +232,7 @@ function onQR(decodedText){
 
     if(soundEnabled) document.getElementById("successSound").play();
 
-    scanner.stop().then(()=> recordAttendance(data.ID) )
-    .catch(()=>{
-        scannerBusy = false;
-        startScanner();
-    });
+    scanner.stop().then(()=> recordAttendance(data.ID) );
 }
 
 /* تسجيل الحضور */
@@ -263,8 +242,7 @@ function recordAttendance(id){
 
     ref.once("value").then(snap=>{
         if(snap.exists()){
-            const prevStatus = snap.val().status || "";
-            showPopup("الطالب","مسجل مسبقًا - " + prevStatus);
+            showPopup("الطالب","مسجل مسبقًا - " + snap.val().status);
             scannerBusy=false;
             return startScanner();
         }
@@ -294,7 +272,7 @@ function recordAttendance(id){
                 status:status
             }).then(()=>{
 
-                // إرسال رسالة التأخر فقط
+                /* إرسال رسالة التأخر */
                 if(status === "متأخر" && stu.PARENT_MOBILE){
                     const msg = `ابنكم (${firstName}) تأخر عن الحضور وقت الوصول ${timeFull}`;
                     sendSMS(stu.PARENT_MOBILE, msg);
@@ -303,15 +281,27 @@ function recordAttendance(id){
                 showPopup(firstName,"تم تسجيل: "+status);
                 scannerBusy=false;
                 startScanner();
-
-            }).catch(()=>{
-                showPopup("خطأ","تعذر تسجيل الحضور");
-                scannerBusy=false;
-                startScanner();
             });
         });
     });
 }
+
+/* دعم الباركود */
+let barcodeBuffer = "";
+document.addEventListener("keydown",(e)=>{
+    if(scannerBusy) return;
+
+    if(e.key === "Enter"){
+        const code = barcodeBuffer.trim();
+        barcodeBuffer = "";
+        if(/^\d+$/.test(code)){
+            scannerBusy = true;
+            recordAttendance(code);
+        }
+    } else {
+        barcodeBuffer += e.key;
+    }
+});
 
 /* تحديث الشيت */
 function syncToSheet(){
