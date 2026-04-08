@@ -2,7 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<!-- مهم جدًا لأجهزة أندرويد -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
 <title>مسح QR وتسجيل الحضور</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
@@ -32,16 +35,25 @@ const db = firebase.database();
 body{
     font-family:"Tajawal",sans-serif;
     background:#f3f6f4;
-    min-height:100vh;
+    margin:0;
+    padding:0;
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
 }
 
+/* البطاقة */
 .moe-card{
     background:white;
     border-radius:18px;
     padding:25px;
+    width:95%;
+    max-width:420px;
     box-shadow:0 4px 15px rgba(0,0,0,0.1);
 }
 
+/* الأزرار */
 .moe-btn{
     background:#017c67;
     color:white;
@@ -107,7 +119,6 @@ body{
     <div id="popupStatus"></div>
 </div>
 
-<div class="max-w-xl mx-auto p-6">
 <div class="moe-card">
 
 <h1 class="text-3xl font-extrabold text-center text-green-700 mb-2">
@@ -121,9 +132,9 @@ body{
 <button onclick="enableSound()" class="moe-btn">تفعيل الصوت</button>
 <button onclick="syncToSheet()" class="moe-btn" style="background:#005bbb">تحديث الشيت</button>
 
+<!-- قارئ QR -->
 <div id="reader" class="w-full border-2 border-green-700 rounded-xl mt-4"></div>
 
-</div>
 </div>
 
 <script>
@@ -183,7 +194,7 @@ function startScanner(){
     const scanner = new Html5Qrcode("reader");
     scanner.start(
         { facingMode:"environment" },
-        { fps:10, qrbox:{width:260,height:260} },
+        { fps:10, qrbox:{width:250,height:250} },
         (decoded)=>onQR(decoded,scanner),
         ()=>{}
     );
