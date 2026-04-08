@@ -250,7 +250,6 @@ function recordAttendance(id){
             const timeFull = now.toLocaleTimeString("ar-SA");
             const status = getAttendanceStatus(timeShort);
 
-            // تسجيل الحضور
             ref.set({
                 id:id,
                 name:stu.NAME,
@@ -260,26 +259,14 @@ function recordAttendance(id){
                 time:timeFull,
                 date:today,
                 status:status
-            }).then(()=>{
-
-                // إرسال رسالة التأخر
-                if(status === "متأخر"){
-                    sendSMS(
-                        stu.PARENT_MOBILE,
-                        `ابنك ${stu.NAME} تأخر عن الحضور اليوم.`
-                    );
-                }
-
-                showPopup(stu.NAME.split(" ")[0],"تم تسجيل: "+status);
-
-                // إعادة تشغيل الماسح بعد انتهاء كل شيء
-                scannerBusy=false;
-                startScanner();
             });
+
+            showPopup(stu.NAME.split(" ")[0],"تم تسجيل: "+status);
+            scannerBusy=false;
+            startScanner();
         });
     });
 }
-
 
 /* تحديث الشيت */
 function syncToSheet(){
