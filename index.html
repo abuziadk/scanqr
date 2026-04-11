@@ -125,7 +125,7 @@ body{
 <div class="toggle-btn" onclick="toggleScanner()">تشغيل / إيقاف الماسح</div>
 <div class="toggle-btn" style="background:#005bbb" onclick="syncToSheet()">تحديث الشيت</div>
 <div class="toggle-btn" style="background:#dc2626" onclick="runAbsence()">
-    تسجيل الغياب
+    تسجيل الغياب 
 </div>
 
 
@@ -145,6 +145,38 @@ body{
 <div id="reader"></div>
 
 <script>
+function showPasswordBox() {
+    const box = document.getElementById("passwordBox");
+    box.style.display = "block";
+
+    setTimeout(() => {
+        box.style.opacity = "1";
+        box.style.transform = "translate(-50%, -50%) scale(1)";
+    }, 10);
+}
+
+function closePasswordBox() {
+    const box = document.getElementById("passwordBox");
+    box.style.opacity = "0";
+    box.style.transform = "translate(-50%, -50%) scale(0.7)";
+
+    setTimeout(() => {
+        box.style.display = "none";
+    }, 200);
+}
+
+const ABSENCE_PASSWORD = "1234"; // ← غيّرها كما تريد
+
+function checkAbsencePassword() {
+    const input = document.getElementById("absencePassInput").value;
+
+    if (input === ABSENCE_PASSWORD) {
+        closePasswordBox();
+        runAbsence(); // ← تشغيل الغياب بعد التحقق
+    } else {
+        showToast("❌ كلمة المرور غير صحيحة");
+    }
+}
 
 /* -----------------------------------
    نافذة تأكيد إرسال الرسائل (Popup)
@@ -483,6 +515,64 @@ function syncToSheet(){
         ">إرسال</button>
 
         <button onclick="closeSMSConfirm()" style="
+            flex:1;
+            background:#dc2626;
+            color:white;
+            padding:10px;
+            border:none;
+            border-radius:10px;
+            font-size:16px;
+            font-weight:600;
+        ">إلغاء</button>
+    </div>
+</div>
+<!-- نافذة كلمة المرور -->
+<div id="passwordBox" style="
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.7);
+    background: white;
+    padding: 25px 30px;
+    border-radius: 18px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+    opacity: 0;
+    transition: 0.25s ease;
+    z-index: 99999;
+    width: 85%;
+    max-width: 350px;
+    display: none;
+">
+    <h2 style="font-size:22px; font-weight:bold; color:#017c67;">حماية تسجيل الغياب</h2>
+
+    <p style="margin-top:10px; font-size:17px; color:#444;">
+        أدخل كلمة المرور للمتابعة
+    </p>
+
+    <input id="absencePassInput" type="password" style="
+        width:100%;
+        margin-top:15px;
+        padding:10px;
+        border:1px solid #ccc;
+        border-radius:10px;
+        font-size:18px;
+        text-align:center;
+    " placeholder="••••••">
+
+    <div style="margin-top:20px; display:flex; gap:10px;">
+        <button onclick="checkAbsencePassword()" style="
+            flex:1;
+            background:#017c67;
+            color:white;
+            padding:10px;
+            border:none;
+            border-radius:10px;
+            font-size:16px;
+            font-weight:600;
+        ">تأكيد</button>
+
+        <button onclick="closePasswordBox()" style="
             flex:1;
             background:#dc2626;
             color:white;
