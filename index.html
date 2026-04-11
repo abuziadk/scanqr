@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -120,13 +121,129 @@ body{
     <div id="popupName"></div>
     <div id="popupStatus"></div>
 </div>
+
 <div class="toggle-btn" onclick="toggleScanner()">تشغيل / إيقاف الماسح</div>
 <div class="toggle-btn" style="background:#005bbb" onclick="syncToSheet()">تحديث الشيت</div>
+<div class="toggle-btn" style="background:#dc2626" onclick="runAbsence()">
+    تسجيل الغياب
+</div>
+
+
+<div id="absenceLoading" style="
+    display:none;
+    margin-top:10px;
+    padding:10px;
+    background:#1f2937;
+    color:#fff;
+    border-radius:8px;
+    text-align:center;
+    font-size:15px;">
+    ⏳ جاري تسجيل الغياب… الرجاء الانتظار
+</div>
+
 
 <div id="reader"></div>
 
 <script>
-/* Toast */
+
+/* -----------------------------------
+   نافذة تأكيد إرسال الرسائل (Popup)
+----------------------------------- */
+function showSMSConfirm() {
+    const box = document.getElementById("smsConfirmBox");
+    box.style.display = "block";
+
+    setTimeout(() => {
+        box.style.opacity = "1";
+        box.style.transform = "translate(-50%, -50%) scale(1)";
+    }, 10);
+}
+
+function closeSMSConfirm() {
+    const box = document.getElementById("smsConfirmBox");
+    box.style.opacity = "0";
+    box.style.transform = "translate(-50%, -50%) scale(0.7)";
+
+    setTimeout(() => {
+        box.style.display = "none";
+    }, 200);
+}
+
+/* -----------------------------------
+   رابط Web App الخاص بالغياب
+----------------------------------- */
+const ABSENCE_URL =
+    "https://script.google.com/macros/s/AKfycbzif8zmJWSVYHeUx-IqA_THoPRZieuYWEJNi-3prV0GQXfkUoY_oCoBZkEacVrcC-u-/exec";
+
+/* -----------------------------------
+   تسجيل الغياب أولاً (بدون رسائل)
+   ثم إظهار نافذة التأكيد
+----------------------------------- */
+function checkAbsenceLock() {
+    const today = new Date().toLocaleDateString("en-CA");
+
+    return db.ref("absence_lock").once("value").then(snap => {
+        const lastRun = snap.val();
+
+        if (lastRun === today) {
+            showToast("⚠ تم تسجيل الغياب مسبقًا اليوم");
+            return false; // ممنوع
+        }
+
+        // السماح بالتشغيل + تخزين التاريخ
+        db.ref("absence_lock").set(today);
+        return true;
+    });
+}
+
+function runAbsence() {
+
+    checkAbsenceLock().then(allowed => {
+
+        if (!allowed) return; // تم التشغيل مسبقًا
+
+        document.getElementById("absenceLoading").style.display = "block";
+
+        fetch(ABSENCE_URL + "?action=absence&sendSMS=false")
+            .then(r => r.text())
+            .then(() => {
+                document.getElementById("absenceLoading").style.display = "none";
+                showToast("✔ تم تسجيل الغياب");
+
+                // بعد التسجيل — نعرض نافذة التأكيد
+                showSMSConfirm();
+            })
+            .catch(() => {
+                document.getElementById("absenceLoading").style.display = "none";
+                showToast("❌ حدث خطأ أثناء تسجيل الغياب");
+            });
+
+    });
+}
+
+
+/* -----------------------------------
+   إرسال الرسائل بعد الموافقة
+----------------------------------- */
+function sendAbsenceSMS() {
+    closeSMSConfirm();
+    document.getElementById("absenceLoading").style.display = "block";
+
+    fetch(ABSENCE_URL + "?action=absence&sendSMS=true")
+        .then(r => r.text())
+        .then(() => {
+            document.getElementById("absenceLoading").style.display = "none";
+            showToast("✔ تم إرسال رسائل الغياب");
+        })
+        .catch(() => {
+            document.getElementById("absenceLoading").style.display = "none";
+            showToast("❌ فشل إرسال الرسائل");
+        });
+}
+
+/* -----------------------------------
+   Toast
+----------------------------------- */
 function showToast(msg){
     const t = document.getElementById("toast");
     t.textContent = msg;
@@ -134,20 +251,28 @@ function showToast(msg){
     setTimeout(()=>{ t.style.display="none"; },2000);
 }
 
-/* Popup */
+/* -----------------------------------
+   Popup تسجيل الحضور
+----------------------------------- */
 function showPopup(name,status){
     document.getElementById("popupName").textContent = name;
     document.getElementById("popupStatus").textContent = status;
+
     const box = document.getElementById("popupBox");
     box.classList.add("show");
+
     setTimeout(()=>{ box.classList.remove("show"); },2000);
 }
 
-/* الصوت */
+/* -----------------------------------
+   الصوت
+----------------------------------- */
 let soundEnabled = false;
+
 function enableSound(){
     const audio = document.getElementById("successSound");
     audio.muted = true;
+
     audio.play().then(()=>{
         audio.pause();
         audio.currentTime = 0;
@@ -157,12 +282,18 @@ function enableSound(){
     });
 }
 
-/* الإعدادات */
+/* -----------------------------------
+   الإعدادات
+----------------------------------- */
 let SETTINGS = { END_PRESENT:"9:00", END_LATE:"10:40" };
-db.ref("settings").once("value").then(s=>{ if(s.exists()) SETTINGS=s.val(); });
+
+db.ref("settings").once("value").then(s=>{
+    if(s.exists()) SETTINGS=s.val();
+});
 
 function getAttendanceStatus(timeStr){
     if(!timeStr) return "غائب";
+
     const [h,m] = timeStr.split(":").map(Number);
     const t = h*60+m;
 
@@ -177,7 +308,9 @@ function getAttendanceStatus(timeStr){
     return "غائب";
 }
 
-/* QR Scanner */
+/* -----------------------------------
+   QR Scanner
+----------------------------------- */
 let scanner = null;
 let scannerRunning = false;
 let scannerBusy = false;
@@ -195,12 +328,14 @@ function toggleScanner(){
 
 function startScanner(){
     scanner = new Html5Qrcode("reader");
+
     scanner.start(
         { facingMode:"environment" },
         { fps:10, qrbox:{width:300,height:300} },
-        (decoded)=>onQR(decoded),
-        ()=>{}
+        decoded => onQR(decoded),
+        () => {}
     );
+
     scannerRunning = true;
 }
 
@@ -224,10 +359,12 @@ function onQR(decodedText){
 
     if(soundEnabled) document.getElementById("successSound").play();
 
-    scanner.stop().then(()=> recordAttendance(data.ID) );
+    scanner.stop().then(()=> recordAttendance(data.ID));
 }
 
-/* تسجيل الحضور */
+/* -----------------------------------
+   تسجيل الحضور
+----------------------------------- */
 function recordAttendance(id){
     const today = new Date().toLocaleDateString("en-CA");
     const ref = db.ref("attendance/"+today+"/"+id);
@@ -264,7 +401,6 @@ function recordAttendance(id){
                 status:status
             }).then(()=>{
 
-                /* إرسال رسالة التأخر */
                 if(status === "متأخر" && stu.PARENT_MOBILE){
                     const msg = `ابنكم (${firstName}) تأخر عن الحضور وقت الوصول ${timeFull}`;
                     sendSMS(stu.PARENT_MOBILE, msg);
@@ -278,14 +414,18 @@ function recordAttendance(id){
     });
 }
 
-/* دعم الباركود */
+/* -----------------------------------
+   دعم الباركود
+----------------------------------- */
 let barcodeBuffer = "";
+
 document.addEventListener("keydown",(e)=>{
     if(scannerBusy) return;
 
     if(e.key === "Enter"){
         const code = barcodeBuffer.trim();
         barcodeBuffer = "";
+
         if(/^\d+$/.test(code)){
             scannerBusy = true;
             recordAttendance(code);
@@ -295,13 +435,65 @@ document.addEventListener("keydown",(e)=>{
     }
 });
 
-/* تحديث الشيت */
+/* -----------------------------------
+   تحديث الشيت
+----------------------------------- */
 function syncToSheet(){
-    fetch("https://script.google.com/macros/s/AKfycbzif8zmJWSVYHeUx-IqA_THoPRZieuYWEJNi-3prV0GQXfkUoY_oCoBZkEacVrcC-u-/exec?action=sync")
-    .then(()=>showToast("تم تحديث الشيت"))
-    .catch(()=>showToast("فشل تحديث الشيت"));
+    fetch(ABSENCE_URL + "?action=sync")
+        .then(()=>showToast("تم تحديث الشيت"))
+        .catch(()=>showToast("فشل تحديث الشيت"));
 }
+
 </script>
+
+
+<!-- نافذة تأكيد إرسال الرسائل -->
+<div id="smsConfirmBox" style="
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.7);
+    background: white;
+    padding: 25px 30px;
+    border-radius: 18px;
+    text-align: center;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+    opacity: 0;
+    transition: 0.25s ease;
+    z-index: 99999;
+    width: 85%;
+    max-width: 350px;
+    display: none;
+">
+    <h2 style="font-size:22px; font-weight:bold; color:#017c67;">تأكيد إرسال الرسائل</h2>
+    <p style="margin-top:10px; font-size:17px; color:#444;">
+        هل تريد إرسال رسائل الغياب لأولياء الأمور الآن؟
+    </p>
+
+    <div style="margin-top:20px; display:flex; gap:10px;">
+        <button onclick="sendAbsenceSMS()" style="
+            flex:1;
+            background:#017c67;
+            color:white;
+            padding:10px;
+            border:none;
+            border-radius:10px;
+            font-size:16px;
+            font-weight:600;
+        ">إرسال</button>
+
+        <button onclick="closeSMSConfirm()" style="
+            flex:1;
+            background:#dc2626;
+            color:white;
+            padding:10px;
+            border:none;
+            border-radius:10px;
+            font-size:16px;
+            font-weight:600;
+        ">إلغاء</button>
+    </div>
+</div>
 
 </body>
 </html>
