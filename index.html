@@ -124,9 +124,10 @@ body{
 
 <div class="toggle-btn" onclick="toggleScanner()">تشغيل / إيقاف الماسح</div>
 <div class="toggle-btn" style="background:#005bbb" onclick="syncToSheet()">تحديث الشيت</div>
-<div class="toggle-btn" style="background:#dc2626" onclick="runAbsence()">
-    تسجيل الغياب 
+<div class="toggle-btn" style="background:#dc2626" onclick="showPasswordBox()">
+    تسجيل الغياب
 </div>
+
 
 
 <div id="absenceLoading" style="
@@ -165,7 +166,7 @@ function closePasswordBox() {
     }, 200);
 }
 
-const ABSENCE_PASSWORD = "1234"; // ← غيّرها كما تريد
+const ABSENCE_PASSWORD = "2034"; // ← غيّرها كما تريد
 
 function checkAbsencePassword() {
     const input = document.getElementById("absencePassInput").value;
