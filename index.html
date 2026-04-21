@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -233,17 +234,21 @@ function runAbsence() {
 
     checkAbsenceLock().then(allowed => {
 
-        if (!allowed) return; // تم التشغيل مسبقًا
+        if (!allowed) return;
 
+        // تشغيل شاشة التحميل
         document.getElementById("absenceLoading").style.display = "block";
 
         fetch(ABSENCE_URL + "?action=absence&sendSMS=false")
             .then(r => r.text())
             .then(() => {
+
+                // إخفاء شاشة التحميل مباشرة بعد انتهاء التسجيل
                 document.getElementById("absenceLoading").style.display = "none";
+
                 showToast("✔ تم تسجيل الغياب");
 
-                // بعد التسجيل — نعرض نافذة التأكيد
+                // الآن نعرض نافذة التأكيد
                 showSMSConfirm();
             })
             .catch(() => {
@@ -260,7 +265,6 @@ function runAbsence() {
 ----------------------------------- */
 function sendAbsenceSMS() {
     closeSMSConfirm();
-    document.getElementById("absenceLoading").style.display = "block";
 
     fetch(ABSENCE_URL + "?action=absence&sendSMS=true")
         .then(r => r.text())
@@ -584,6 +588,23 @@ function syncToSheet(){
             font-weight:600;
         ">إلغاء</button>
     </div>
+</div>
+<div id="smsLoading" 
+     style="
+        display:none;
+        position:fixed;
+        top:0; left:0;
+        width:100%; height:100%;
+        background:rgba(0,0,0,0.55);
+        z-index:9999;
+        color:white;
+        font-size:28px;
+        font-weight:700;
+        text-align:center;
+        padding-top:25%;
+        font-family:'Cairo';
+     ">
+    ⏳ جاري إرسال رسائل الغياب… الرجاء الانتظار
 </div>
 
 </body>
