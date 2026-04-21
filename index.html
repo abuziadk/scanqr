@@ -142,7 +142,17 @@ body{
     font-size:15px;">
     ⏳ جاري تسجيل الغياب… الرجاء الانتظار
 </div>
-
+<div id="smsLoading" style="
+    display:none;
+    margin-top:10px;
+    padding:10px;
+    background:#1f2937;
+    color:#fff;
+    border-radius:8px;
+    text-align:center;
+    font-size:15px;">
+    ⏳ جاري الإرسال… الرجاء الانتظار
+</div>
 
 <div id="reader"></div>
 
@@ -266,17 +276,27 @@ function runAbsence() {
 function sendAbsenceSMS() {
     closeSMSConfirm();
 
-    fetch(ABSENCE_URL + "?action=absence&sendSMS=true")
+    // تشغيل شاشة تحميل الإرسال فقط
+    document.getElementById("smsLoading").style.display = "block";
+
+    fetch(ABSENCE_URL + "?action=sendSMS")
         .then(r => r.text())
         .then(() => {
-            document.getElementById("absenceLoading").style.display = "none";
+
+            // إخفاء شاشة تحميل الإرسال
+            document.getElementById("smsLoading").style.display = "none";
+
             showToast("✔ تم إرسال رسائل الغياب");
         })
         .catch(() => {
-            document.getElementById("absenceLoading").style.display = "none";
+
+            // إخفاء شاشة تحميل الإرسال حتى لو فشل
+            document.getElementById("smsLoading").style.display = "none";
+
             showToast("❌ فشل إرسال الرسائل");
         });
 }
+
 
 /* -----------------------------------
    Toast
@@ -588,24 +608,7 @@ function syncToSheet(){
             font-weight:600;
         ">إلغاء</button>
     </div>
-</div>
-<div id="smsLoading" 
-     style="
-        display:none;
-        position:fixed;
-        top:0; left:0;
-        width:100%; height:100%;
-        background:rgba(0,0,0,0.55);
-        z-index:9999;
-        color:white;
-        font-size:28px;
-        font-weight:700;
-        text-align:center;
-        padding-top:25%;
-        font-family:'Cairo';
-     ">
-    ⏳ جاري إرسال رسائل الغياب… الرجاء الانتظار
-</div>
+
 
 </body>
 </html>
